@@ -3,8 +3,17 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from dash.dependencies import Input, Output
+from dash import html
 
 from data_config import df, mutation_cols, mrna_cols, SENTINEL_ZERO, make_km_for_subset
+from cache import get_mutation_binary_matrix, get_numeric_matrix
+from utils import (
+    parse_mutation_status,
+    set_figure_y_axis,
+    empty_figure,
+    CHART_CONTAINER,
+    COLORS,
+)
 
 
 def register_mutation_callbacks(app):
@@ -26,10 +35,10 @@ def register_mutation_callbacks(app):
         Input("mut-cat-feature", "value"),
     )
     def update_mutation_tab(mut_col, subtype_filter, er_filter, mrna_gene, cat_feature):
-        empty_fig = go.Figure().update_layout(title="No data", template="plotly_white", height=320)
+        empty_fig_default = empty_figure("No data", height=320)
 
         if not mut_col or mut_col not in df.columns:
-            return [], empty_fig, empty_fig, empty_fig, empty_fig, empty_fig, empty_fig, empty_fig, empty_fig, empty_fig
+            return [], empty_fig_default, empty_fig_default, empty_fig_default, empty_fig_default, empty_fig_default, empty_fig_default, empty_fig_default, empty_fig_default, empty_fig_default
 
         sub_df = df.copy()
         if subtype_filter and "pam50_+_claudin-low_subtype" in sub_df.columns:
@@ -37,23 +46,23 @@ def register_mutation_callbacks(app):
         if er_filter and "er_status" in sub_df.columns:
             sub_df = sub_df[sub_df["er_status"].isin(er_filter)]
 
-        col_str = sub_df[mut_col].astype(str).str.strip()
-        mutated_mask = ~col_str.isin(SENTINEL_ZERO)
+        # Use cached mutation binary matrix, then filter
+        mut_bin_full = get_mutation_binary_matrix(df, [mut_col], SENTINEL_ZERO)
+        mutated_mask = mut_bin_full[mut_col].astype(bool)
+        mutated_mask = mutated_mask[sub_df.index]
 
         n_total = len(sub_df)
         n_mut = mutated_mask.sum()
         pct = (n_mut / n_total * 100).round(1) if n_total > 0 else 0
 
-        from dash import html  # local import to avoid circular deps
-
         summary = [
             html.Div(
-                style={"backgroundColor": "white", "padding": "12px 16px", "borderRadius": "8px", "boxShadow": "0 1px 2px rgba(0,0,0,0.08)"},
-                children=[html.Div("Mutation", style={"fontSize": "12px", "color": "#666"}), html.Div(mut_col, style={"fontSize": "16px", "fontWeight": "bold"})],
+                style={"backgroundColor": "white", "padding": "12px 16px", "borderRadius": "8px", "boxShadow": COLORS["shadow"]},
+                children=[html.Div("Mutation", style={"fontSize": "12px", "color": COLORS["text_secondary"]}), html.Div(mut_col, style={"fontSize": "16px", "fontWeight": "bold"})],
             ),
             html.Div(
-                style={"backgroundColor": "white", "padding": "12px 16px", "borderRadius": "8px", "boxShadow": "0 1px 2px rgba(0,0,0,0.08)"},
-                children=[html.Div("Mutated patients (filtered)", style={"fontSize": "12px", "color": "#666"}), html.Div(f"{n_mut} / {n_total} ({pct}%)", style={"fontSize": "16px", "fontWeight": "bold"})],
+                style={"backgroundColor": "white", "padding": "12px 16px", "borderRadius": "8px", "boxShadow": COLORS["shadow"]},
+                children=[html.Div("Mutated patients (filtered)", style={"fontSize": "12px", "color": COLORS["text_secondary"]}), html.Div(f"{n_mut} / {n_total} ({pct}%)", style={"fontSize": "16px", "fontWeight": "bold"})],
             ),
         ]
 
@@ -83,18 +92,7 @@ def register_mutation_callbacks(app):
                 text="percent_mutated",
             )
             pam_fig.update_traces(textposition="outside")
-            max_y = None
-            for _tr in pam_fig.data:
-                y = getattr(_tr, "y", None)
-                if y is None:
-                    continue
-                try:
-                    this_max = max(y)
-                except Exception:
-                    continue
-                max_y = this_max if max_y is None else max(max_y, this_max)
-            if max_y is not None:
-                pam_fig.update_yaxes(range=[0, max_y * 1.25])
+            set_figure_y_axis(pam_fig)
             pam_fig.update_layout(
                 xaxis_title="PAM50/Claudin-low subtype",
                 yaxis_title="% of patients with mutation",
@@ -103,7 +101,7 @@ def register_mutation_callbacks(app):
                 margin=dict(l=60, r=20, t=60, b=80),
             )
         else:
-            pam_fig = empty_fig.update_layout(title="No PAM50 column")
+            pam_fig = empty_figure("No PAM50 column", height=320)
 
         # ER status
         if "er_status" in sub_df.columns:
@@ -119,18 +117,7 @@ def register_mutation_callbacks(app):
                 text="percent_mutated",
             )
             er_fig.update_traces(textposition="outside")
-            max_y = None
-            for _tr in er_fig.data:
-                y = getattr(_tr, "y", None)
-                if y is None:
-                    continue
-                try:
-                    this_max = max(y)
-                except Exception:
-                    continue
-                max_y = this_max if max_y is None else max(max_y, this_max)
-            if max_y is not None:
-                er_fig.update_yaxes(range=[0, max_y * 1.25])
+            set_figure_y_axis(er_fig)
             er_fig.update_layout(
                 xaxis_title="ER status",
                 yaxis_title="% of patients with mutation",
@@ -139,7 +126,7 @@ def register_mutation_callbacks(app):
                 margin=dict(l=60, r=20, t=60, b=60),
             )
         else:
-            er_fig = empty_fig.update_layout(title="No ER column")
+            er_fig = empty_figure("No ER column", height=320)
 
         # Treatment: percent of patients receiving each treatment (Yes only),
         # split by mutation status (Mutated vs Wild-type).
@@ -212,18 +199,7 @@ def register_mutation_callbacks(app):
                 },
             )
             treat_fig.update_traces(textposition="outside")
-            max_y = None
-            for _tr in treat_fig.data:
-                y = getattr(_tr, "y", None)
-                if y is None:
-                    continue
-                try:
-                    this_max = max(y)
-                except Exception:
-                    continue
-                max_y = this_max if max_y is None else max(max_y, this_max)
-            if max_y is not None:
-                treat_fig.update_yaxes(range=[0, max_y * 1.25])
+            set_figure_y_axis(treat_fig)
             treat_fig.update_layout(
                 xaxis_title="Treatment type",
                 yaxis_title="% of patients in group",
@@ -233,7 +209,7 @@ def register_mutation_callbacks(app):
                 legend_title_text="Mutation status",
             )
         else:
-            treat_fig = empty_fig.update_layout(title="No treatment data for filtered cohort")
+            treat_fig = empty_figure("No treatment data for filtered cohort", height=320)
 
         # Mutation burden
         if "mutation_count" in sub_df.columns:
@@ -255,13 +231,13 @@ def register_mutation_callbacks(app):
                 margin=dict(l=60, r=20, t=60, b=60),
             )
         else:
-            burden_fig = empty_fig.update_layout(title="mutation_count not found")
+            burden_fig = empty_figure("mutation_count not found", height=320)
 
         # KM survival – filtered cohort
         if len(sub_df) > 0:
             surv_fig = make_km_for_subset(sub_df, mutated_mask, title_suffix=f"for {mut_col}")
         else:
-            surv_fig = empty_fig.update_layout(title="No patients available for KM after filters")
+            surv_fig = empty_figure("No patients available for KM after filters", height=320)
 
         # Clinical feature % mutated
         if cat_feature and cat_feature in sub_df.columns and n_total > 0:
@@ -277,18 +253,7 @@ def register_mutation_callbacks(app):
                 text="pct"
             )
             clin_fig.update_traces(textposition="outside")
-            max_y = None
-            for _tr in clin_fig.data:
-                y = getattr(_tr, "y", None)
-                if y is None:
-                    continue
-                try:
-                    this_max = max(y)
-                except Exception:
-                    continue
-                max_y = this_max if max_y is None else max(max_y, this_max)
-            if max_y is not None:
-                clin_fig.update_yaxes(range=[0, max_y * 1.25])
+            set_figure_y_axis(clin_fig)
             clin_fig.update_layout(
                 xaxis_title=cat_feature.replace("_", " ").title(),
                 yaxis_title="% of patients with mutation",
@@ -297,7 +262,7 @@ def register_mutation_callbacks(app):
                 margin=dict(l=60, r=20, t=60, b=80),
             )
         else:
-            clin_fig = empty_fig.update_layout(title="Select a clinical feature")
+            clin_fig = empty_figure("Select a clinical feature", height=280)
 
         # Co-mutation focus: which other genes co-occur with this mutation?
         if n_mut > 0 and len(mutation_cols) > 1:
@@ -326,18 +291,7 @@ def register_mutation_callbacks(app):
                     text="Percent",
                 )
                 cofocus_fig.update_traces(textposition="outside")
-                max_y = None
-                for _tr in cofocus_fig.data:
-                    y = getattr(_tr, "y", None)
-                    if y is None:
-                        continue
-                    try:
-                        this_max = max(y)
-                    except Exception:
-                        continue
-                    max_y = this_max if max_y is None else max(max_y, this_max)
-                if max_y is not None:
-                    cofocus_fig.update_yaxes(range=[0, max_y * 1.25])
+                set_figure_y_axis(cofocus_fig)
                 cofocus_fig.update_layout(
                     xaxis_title="Gene",
                     yaxis_title=f"% of patients also mutated",
@@ -346,9 +300,9 @@ def register_mutation_callbacks(app):
                     margin=dict(l=60, r=20, t=60, b=60),
                 )
             else:
-                cofocus_fig = empty_fig.update_layout(title=f"No co-mutations found for {mut_col}")
+                cofocus_fig = empty_figure(f"No co-mutations found for {mut_col}", height=320)
         else:
-            cofocus_fig = empty_fig.update_layout(title="No mutated patients for co-mutation analysis")
+            cofocus_fig = empty_figure("No mutated patients for co-mutation analysis", height=320)
 
         # mRNA vs mutation
         if mrna_gene and mrna_gene in sub_df.columns:
@@ -372,8 +326,8 @@ def register_mutation_callbacks(app):
                     margin=dict(l=60, r=20, t=60, b=60),
                 )
             else:
-                expr_fig = empty_fig.update_layout(title="No expression data after filtering")
+                expr_fig = empty_figure("No expression data after filtering", height=340)
         else:
-            expr_fig = empty_fig.update_layout(title="Select an mRNA gene")
+            expr_fig = empty_figure("Select an mRNA gene", height=340)
 
         return summary, pie_fig, pam_fig, er_fig, treat_fig, burden_fig, surv_fig, clin_fig, cofocus_fig, expr_fig

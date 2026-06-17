@@ -105,15 +105,16 @@ def register_overview_callbacks(app):
 
             # Surgery pie
             if "type_of_breast_surgery" in df.columns:
-                df["type_of_breast_surgery"] = (
-                    df["type_of_breast_surgery"]
+                surgery_df = df.copy()
+                surgery_df["type_of_breast_surgery"] = (
+                    surgery_df["type_of_breast_surgery"]
                     .fillna("None")
                     .replace("", "None")
                     .replace(" ", "None")
                 )
 
                 surgery_fig = px.pie(
-                    df,
+                    surgery_df,
                     names="type_of_breast_surgery",
                     title="Type of Breast Surgery",
                     hole=0.4,
@@ -231,64 +232,64 @@ def register_overview_callbacks(app):
 
             return html.Div(
                 children=[
-                    # summary cards
+                    # Summary stats cards
                     html.Div(
-                        style={"display": "flex", "gap": "15px", "flexWrap": "wrap", "marginBottom": "25px"},
+                        className="stats-grid",
                         children=[
                             stat_card("Patients", f"{n_patients}"),
-                            stat_card("Clinical attributes", f"{len(clinical_cols)}"),
-                            stat_card("Mutation genes", f"{len(mutation_cols)}"),
-                            stat_card("mRNA genes", f"{len(mrna_cols)}"),
-                            stat_card("Median age", f"{median_age:.1f}" if median_age else "—"),
-                            stat_card("ER+ (%)", f"{er_pos:.1f}%" if er_pos is not None else "—"),
-                            stat_card("Alive (%)", f"{alive_pct:.1f}%" if alive_pct is not None else "—"),
+                            stat_card("Clinical", f"{len(clinical_cols)}"),
+                            stat_card("Mutations", f"{len(mutation_cols)}"),
+                            stat_card("mRNA", f"{len(mrna_cols)}"),
+                            stat_card("Median Age", f"{median_age:.1f}" if median_age else "—"),
+                            stat_card("ER+ %", f"{er_pos:.1f}%" if er_pos is not None else "—"),
+                            stat_card("Alive %", f"{alive_pct:.1f}%" if alive_pct is not None else "—"),
                         ],
                     ),
 
-                    # clinical row
+                    # Clinical row (responsive grid)
                     html.Div(
-                        style={"display": "flex", "gap": "25px", "flexWrap": "wrap", "marginBottom": "25px"},
+                        className="layout-grid",
                         children=[
                             html.Div(
-                                style={"flex": "1 1 350px", "backgroundColor": "white", "padding": "10px", "borderRadius": "8px"},
+                                className="chart-container",
                                 children=[dcc.Graph(figure=age_fig)] if age_fig else ["age_at_diagnosis not found"],
                             ),
                             html.Div(
-                                style={"flex": "1 1 350px", "backgroundColor": "white", "padding": "10px", "borderRadius": "8px"},
+                                className="chart-container",
                                 children=[dcc.Graph(figure=stage_fig)] if stage_fig else ["tumor_stage not found"],
                             ),
                             html.Div(
-                                style={"flex": "1 1 350px", "backgroundColor": "white", "padding": "10px", "borderRadius": "8px"},
+                                className="chart-container",
                                 children=[dcc.Graph(figure=surgery_fig)] if surgery_fig else ["type_of_breast_surgery not found"],
                             ),
                         ],
                     ),
 
-                    # survival row
+                    # Survival row (responsive)
                     html.Div(
-                        style={"display": "flex", "gap": "25px", "flexWrap": "wrap", "marginBottom": "25px"},
+                        className="layout-grid",
                         children=[
                             html.Div(
-                                style={"flex": "1 1 400px", "backgroundColor": "white", "padding": "10px", "borderRadius": "8px"},
+                                className="chart-container",
                                 children=[dcc.Graph(figure=km_fig)],
                             ),
                             html.Div(
-                                style={"flex": "1 1 400px", "backgroundColor": "white", "padding": "10px", "borderRadius": "8px"},
+                                className="chart-container",
                                 children=[dcc.Graph(figure=npi_fig)] if npi_fig else ["nottingham_prognostic_index not found"],
                             ),
                         ],
                     ),
 
-                    # mutation row
+                    # Mutation row (responsive)
                     html.Div(
-                        style={"display": "flex", "gap": "25px", "flexWrap": "wrap"},
+                        className="layout-grid",
                         children=[
                             html.Div(
-                                style={"flex": "1 1 450px", "backgroundColor": "white", "padding": "10px", "borderRadius": "8px"},
+                                className="chart-container",
                                 children=[dcc.Graph(figure=mut_fig)] if mut_fig else ["No mutation columns detected."],
                             ),
                             html.Div(
-                                style={"flex": "1 1 650px", "backgroundColor": "white", "padding": "10px", "borderRadius": "8px"},
+                                className="chart-container",
                                 children=[dcc.Graph(figure=heat_fig)] if heat_fig else [],
                             ),
                         ],

@@ -3,12 +3,15 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from dash.dependencies import Input, Output
-from sklearn.decomposition import PCA
-from sklearn.cluster import KMeans
-from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import StandardScaler
 
 from data_config import df, mrna_cols
+from cache import (
+    get_numeric_matrix,
+    get_pca_results,
+    get_kmeans_results,
+    print_cache_stats,
+)
 
 
 def register_mrna_callbacks(app):
@@ -71,9 +74,7 @@ def register_mrna_callbacks(app):
             )
 
         # Numeric mRNA matrix
-        X = df[mrna_cols].apply(pd.to_numeric, errors="coerce")
-        X = X.dropna(axis=1, how="all")
-        X = X.fillna(X.median())
+        X = get_numeric_matrix(df, mrna_cols)
 
         if gene not in X.columns:
             corr_fig = empty_fig("Selected gene is not numeric in mRNA matrix.")
@@ -109,8 +110,7 @@ def register_mrna_callbacks(app):
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X)
 
-        pca = PCA(n_components=n_components, random_state=0)
-        X_pca = pca.fit_transform(X_scaled)
+        X_pca, pca_variance = get_pca_results(X_scaled, n_components)
 
         pca_df = pd.DataFrame({
             "PC1": X_pca[:, 0],
@@ -121,8 +121,8 @@ def register_mrna_callbacks(app):
         else:
             pca_df["Subtype"] = "All"
 
-        pc1_var = pca.explained_variance_ratio_[0] * 100
-        pc2_var = pca.explained_variance_ratio_[1] * 100
+        pc1_var = pca_variance[0] * 100
+        pc2_var = pca_variance[1] * 100
 
         pca_scatter = px.scatter(
             pca_df,
@@ -143,7 +143,7 @@ def register_mrna_callbacks(app):
         comp_labels = [f"PC{i+1}" for i in range(n_components)]
         var_fig = px.bar(
             x=comp_labels,
-            y=pca.explained_variance_ratio_,
+            y=pca_variance,
             labels={"x": "Principal component", "y": "Explained variance ratio"},
             title="Explained variance by principal component",
         )
@@ -166,12 +166,10 @@ def register_mrna_callbacks(app):
             return expr_fig, corr_fig, pca_scatter, var_fig, kmeans_fig, summary_text
 
         k_dim = min(5, n_components)
-        kmeans = KMeans(n_clusters=k, n_init=10, random_state=0)
-        cluster_labels = kmeans.fit_predict(X_pca[:, :k_dim])
+        cluster_labels, sil_score = get_kmeans_results(X_pca, k, k_dim)
 
         try:
-            sil = silhouette_score(X_pca[:, :k_dim], cluster_labels)
-            sil_text = f"Silhouette score: {sil:.3f}"
+            sil_text = f"Silhouette score: {sil_score:.3f}"
         except Exception:
             sil_text = "Silhouette score could not be computed."
 

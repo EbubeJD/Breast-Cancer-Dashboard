@@ -1,47 +1,86 @@
 from dash import html, dcc
+from utils import CARD_STYLE, COLORS, CONTAINER_STYLE
+
 
 def stat_card(title, value):
+    """Mobile-friendly stat card with responsive text."""
     return html.Div(
-        style={
-            "backgroundColor": "white",
-            "padding": "15px 20px",
-            "borderRadius": "8px",
-            "boxShadow": "0 1px 2px rgba(0,0,0,0.08)",
-            "minWidth": "180px",
-        },
+        className="stat-card",
         children=[
-            html.Div(title, style={"fontSize": "13px", "color": "#666"}),
-            html.Div(value, style={"fontSize": "24px", "fontWeight": "bold"}),
+            html.Div(title, className="stat-card-label"),
+            html.Div(value, className="stat-card-value"),
         ],
     )
 
 
 def create_layout():
-    """Top-level layout with tabs and a container for tab content."""
+    """Top-level layout with Bootstrap and responsive design."""
     return html.Div(
-        style={"fontFamily": "Arial", "backgroundColor": "#f5f5f5", "minHeight": "100vh"},
+        className="dashboard-container",
         children=[
+            # Viewport meta tag (handled in server configuration)
+            # CSS Link
+            html.Link(
+                rel="stylesheet",
+                href="/static/styles.css",
+            ),
+
+            # Header
             html.Div(
-                style={"padding": "25px 25px 5px 25px"},
+                className="dashboard-header",
                 children=[
-                    html.H1("METABRIC Breast Cancer Dashboard", style={"marginBottom": "5px"}),
+                    html.H1("METABRIC Breast Cancer Dashboard", style={"margin": "0 0 0.5rem 0"}),
                     html.P(
                         "Explore clinical attributes, mutation profiles, and mRNA expression.",
-                        style={"color": "#555"},
+                        style={"margin": "0", "color": "#888", "fontSize": "0.95rem"},
                     ),
                 ],
             ),
-            dcc.Tabs(
-                id="tabs",
-                value="tab-overview",
+
+            # Tabs (mobile-responsive)
+            html.Div(
+                className="tabs-container",
                 children=[
-                    dcc.Tab(label="Overview", value="tab-overview"),
-                    dcc.Tab(label="Mutations", value="tab-mutations"),
-                    dcc.Tab(label="mRNA Expression", value="tab-mrna"),
-                    dcc.Tab(label="Co-Mutation / Co-Expression", value="tab-comutation"),
+                    dcc.Tabs(
+                        id="tabs",
+                        value="tab-overview",
+                        parent_className="tabs-list",
+                        className="tabs-list",
+                        children=[
+                            dcc.Tab(
+                                label="Overview",
+                                value="tab-overview",
+                                className="tab-button",
+                                selected_className="tab-button active",
+                            ),
+                            dcc.Tab(
+                                label="Mutations",
+                                value="tab-mutations",
+                                className="tab-button",
+                                selected_className="tab-button active",
+                            ),
+                            dcc.Tab(
+                                label="mRNA",
+                                value="tab-mrna",
+                                className="tab-button",
+                                selected_className="tab-button active",
+                            ),
+                            dcc.Tab(
+                                label="Co-Analysis",
+                                value="tab-comutation",
+                                className="tab-button",
+                                selected_className="tab-button active",
+                            ),
+                        ],
+                    )
                 ],
-                style={"padding": "0 25px"},
             ),
-            html.Div(id="tab-content", style={"padding": "25px"}),
+
+            # Tab Content
+            html.Div(
+                id="tab-content",
+                className="tab-content",
+                style={"padding": "0"},
+            ),
         ],
     )

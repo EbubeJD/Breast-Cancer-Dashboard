@@ -1,0 +1,22 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "dockerfile",
+    "context": "."
+  },
+  "deploy": {
+    "startCommand": "gunicorn -b 0.0.0.0:$PORT app:server --workers 3 --worker-class sync --timeout 120",
+    "restartPolicyType": "on_failure",
+    "restartPolicyMaxRetries": 5
+  },
+  "env": {
+    "DASH_DEBUG": {
+      "description": "Debug mode (set to false for production)",
+      "value": "false"
+    },
+    "PYTHONUNBUFFERED": {
+      "description": "Python unbuffered output",
+      "value": "1"
+    }
+  }
+}

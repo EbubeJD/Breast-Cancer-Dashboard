@@ -4,6 +4,11 @@ import plotly.graph_objects as go
 from dash.dependencies import Input, Output
 
 from data_config import df, mutation_cols, mrna_cols, SENTINEL_ZERO
+from cache import (
+    get_mutation_binary_matrix,
+    get_numeric_matrix,
+    get_correlation_matrix,
+)
 
 
 def register_co_callbacks(app):
@@ -40,8 +45,8 @@ def register_co_callbacks(app):
 
         # ---------- MUTATION: co-mutation heatmap + network ----------
         if mutation_cols:
-            mut_str = df[mutation_cols].astype(str).apply(lambda s: s.str.strip())
-            mut_bin = (~mut_str.isin(SENTINEL_ZERO)).astype(int)
+            # Use cached binary mutation matrix
+            mut_bin = get_mutation_binary_matrix(df, mutation_cols, SENTINEL_ZERO)
 
             counts = mut_bin.sum().sort_values(ascending=False)
             if top_n is None:
@@ -49,7 +54,7 @@ def register_co_callbacks(app):
             top_n = int(max(5, min(top_n, min(30, len(counts)))))
 
             top_genes = counts.head(top_n).index.tolist()
-            corr_mut = mut_bin[top_genes].corr()
+            corr_mut = get_correlation_matrix(mut_bin, top_genes, method="pearson")
 
             # Heatmap
             mut_heat = px.imshow(
@@ -170,9 +175,7 @@ def register_co_callbacks(app):
         if mrna_cols:
             import pandas as pd
 
-            X = df[mrna_cols].apply(pd.to_numeric, errors="coerce")
-            X = X.dropna(axis=1, how="all")
-            X = X.fillna(X.median())
+            X = get_numeric_matrix(df, mrna_cols)
 
             if mrna_topn is None:
                 mrna_topn = 20
@@ -182,7 +185,7 @@ def register_co_callbacks(app):
             variances = X.var().sort_values(ascending=False)
             top_genes_mrna = variances.head(mrna_topn).index.tolist()
 
-            corr_mrna = X[top_genes_mrna].corr()
+            corr_mrna = get_correlation_matrix(X, top_genes_mrna, method="pearson")
 
             # Heatmap
             mrna_heat = px.imshow(

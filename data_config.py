@@ -3,6 +3,8 @@ import pandas as pd
 from pathlib import Path
 import plotly.graph_objects as go
 from lifelines import KaplanMeierFitter
+from functools import lru_cache
+from utils import map_cancer_event
 
 # -------------------------------------------------
 # LOAD DATA
@@ -14,37 +16,7 @@ DATA_PATH = BASE_DIR / "data" / "METABRIC_RNA_Mutation.csv"
 
 df = pd.read_csv(DATA_PATH, low_memory=False)
 
-
-# -------------------------------------------------
-# COLUMN GROUPS
-# -------------------------------------------------
-def map_cancer_event(value):
-    """
-    1 = death from breast cancer (cancer-specific event)
-    0 = alive, lost to follow-up, or died of other causes
-    """
-    v = str(value).strip().lower()
-
-    if v in ("", "nan", "none"):
-        return 0
-
-    # numeric / simple flags
-    if v in {"1", "yes", "y", "true"}:
-        return 1
-    if v in {"0", "no", "n", "false"}:
-        return 0
-
-    # Textual descriptions from METABRIC-like sources
-    if "died" in v and "disease" in v:
-        return 1  # Died of Disease -> cancer-specific
-    if "died" in v:
-        return 0  # Died of other causes
-    if "living" in v or "alive" in v:
-        return 0
-
-    return 0
-
-
+# Create event column once at load time
 if "death_from_cancer" in df.columns:
     df["death_from_cancer_event"] = df["death_from_cancer"].apply(map_cancer_event).astype(int)
 else:
