@@ -51,4 +51,4 @@ USER appuser
 
 EXPOSE 8050
 
-CMD gunicorn --bind 0.0.0.0:${PORT:-8050} --workers 3 --worker-class sync --worker-tmp-dir /dev/shm --max-requests 1000 --max-requests-jitter 50 --timeout 120 --access-logfile - --error-logfile - --log-level info app:server
+CMD gunicorn --bind 0.0.0.0:${PORT:-8050} --workers 2 --worker-class sync --worker-tmp-dir /dev/shm --max-requests 500 --max-requests-jitter 50 --timeout 120 --access-logfile - --error-logfile - --log-level info app:server
