@@ -1,4 +1,3 @@
-# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -19,34 +18,22 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-
-# Virtual environments
 .venv/
 venv/
 ENV/
 env/
-
-# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
 *.sublime-workspace
 *.sublime-project
-
-# OS
 .DS_Store
 Thumbs.db
-
-# Testing & Coverage
 .pytest_cache/
 .coverage
 htmlcov/
 .mypy_cache/
-
-# Environment (production only)
 .env.production
 .env.local
-
-# Railway
 .railway/

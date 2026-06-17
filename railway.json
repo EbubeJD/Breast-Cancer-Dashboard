@@ -5,7 +5,6 @@
     "context": "."
   },
   "deploy": {
-    "startCommand": "gunicorn -b 0.0.0.0:$PORT app:server --workers 3 --worker-class sync --timeout 120",
     "restartPolicyType": "on_failure",
     "restartPolicyMaxRetries": 5
   },
