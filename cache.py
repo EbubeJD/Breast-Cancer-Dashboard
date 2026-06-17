@@ -6,6 +6,9 @@ import pandas as pd
 import numpy as np
 from typing import Dict, Tuple, Any, Callable
 import time
+import warnings
+
+warnings.filterwarnings("ignore", message="DataFrame is highly fragmented")
 
 # Global cache storage
 _cache_store: Dict[str, Any] = {}
@@ -166,10 +169,10 @@ def get_mutation_binary_matrix(
     """
     from utils import parse_mutation_status
 
-    result = pd.DataFrame(index=df.index)
+    cols_data = {}
     for col in mutation_cols:
-        result[col] = parse_mutation_status(df, col, sentinel_values)
-    return result.astype(int)
+        cols_data[col] = parse_mutation_status(df, col, sentinel_values)
+    return pd.DataFrame(cols_data, index=df.index).astype(int)
 
 
 @cached("correlation_matrix", ttl=1800)
